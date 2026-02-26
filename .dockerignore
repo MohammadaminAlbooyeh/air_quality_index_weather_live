@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+node_modules/
+build/
+dist/
+*.egg-info
+frontend-react/node_modules/
+.DS_Store
+.git
+.gitignore
