@@ -225,8 +225,8 @@ export default function App() {
       <main className="map-wrapper">
         <div className="globe-frame">
             <div className="map-inner">
-            <MapView focus={focus ?? undefined} highlight={highlight ?? undefined} />
-          </div>
+                <MapView focus={focus ?? undefined} highlight={highlight ?? undefined} onClose={() => { setFocus(null); setHighlight(null); setResult(null); setQuery('') }} />
+              </div>
         </div>
 
         <div className="map-overlay-info">3D GLOBE &nbsp; IQ AIR MAP</div>

@@ -24,7 +24,7 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
   return null
 }
 
-export default function MapView({ focus, highlight }: { focus?: { lat: number | string; lon: number | string; zoom?: number }, highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string } }) {
+export default function MapView({ focus, highlight, onClose }: { focus?: { lat: number | string; lon: number | string; zoom?: number }, highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }, onClose?: () => void }) {
   const center: LatLngExpression = [20.0, 0.0] // world view center
   const [info, setInfo] = useState<string>('Click anywhere on the map to fetch air quality data')
   const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(null)
@@ -180,7 +180,7 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
                 textShadow: '0 2px 10px rgba(0,0,0,0.25)'
               }}>Air Quality</div>
             </div>
-            <button onClick={() => setDetail(null)} style={{ border: 'none', background: 'transparent', fontSize: 18, cursor: 'pointer' }}>✕</button>
+            <button onClick={() => { setDetail(null); if (onClose) onClose() }} style={{ border: 'none', background: 'transparent', fontSize: 18, cursor: 'pointer' }}>✕</button>
           </div>
 
           <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
