@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { MapContainer, TileLayer, useMapEvents, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, useMapEvents, useMap, Marker, Popup } from 'react-leaflet'
 import L, { LatLngExpression } from 'leaflet'
 
 // Fix default icon paths for Vite bundling by importing images
@@ -32,6 +32,26 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
   const markerRef = useRef<any>(null)
   const mapRef = useRef<any>(null)
 
+  // react-leaflet hook-based mover: useMap isn't available at top-level,
+  // so create a small child that performs the pan/zoom when `focus` changes.
+  function MoveMap({ focusProp, highlightProp, onMoved }: { focusProp?: { lat: number | string; lon: number | string; zoom?: number }, highlightProp?: any, onMoved?: (lat: number, lng: number) => void }) {
+    const mapInstance = useMap()
+    React.useEffect(() => {
+      if (!focusProp || !mapInstance) return
+      try {
+        const latn = Number(focusProp.lat)
+        const lonn = Number(focusProp.lon)
+        if (!isNaN(latn) && !isNaN(lonn)) {
+          // make the zoom animation faster by reducing duration
+          mapInstance.flyTo([latn, lonn], focusProp.zoom ?? 10, { duration: 0.4 })
+          onMoved && onMoved(latn, lonn)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, [focusProp, highlightProp, mapInstance])
+    return null
+  }
   useEffect(() => {
     if (markerRef.current) {
       try {
@@ -42,25 +62,7 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
     }
   }, [marker, info])
 
-  useEffect(() => {
-    if (!focus || !mapRef.current) return
-    try {
-      const latn = Number(focus.lat)
-      const lonn = Number(focus.lon)
-      if (!isNaN(latn) && !isNaN(lonn)) {
-        mapRef.current.flyTo([latn, lonn], focus.zoom ?? 10, { duration: 0.9 })
-        setMarker({ lat: latn, lng: lonn })
-        if (highlight && (highlight.aqi || highlight.place)) {
-          setInfo(`AQI: ${highlight.aqi ?? 'N/A'} — ${highlight.place ?? ''}`)
-          setDetail(highlight)
-        } else {
-          setInfo(`Location: ${latn.toFixed(3)}, ${lonn.toFixed(3)}`)
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [focus, highlight])
+  // Focus handling is now performed by the MoveMap child component
 
   async function handleClick(lat: number, lng: number) {
     setInfo(`Fetching air quality data for ${lat.toFixed(2)}, ${lng.toFixed(2)}...`)
@@ -89,6 +91,15 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
           attribution='© CARTO, © OpenStreetMap contributors'
         />
         <ClickHandler onClick={handleClick} />
+        <MoveMap focusProp={focus} highlightProp={highlight} onMoved={(lat: number, lng: number) => {
+          setMarker({ lat, lng })
+          if (highlight && (highlight.aqi || highlight.place)) {
+            setInfo(`AQI: ${highlight.aqi ?? 'N/A'} — ${highlight.place ?? ''}`)
+            setDetail(highlight)
+          } else {
+            setInfo(`Location: ${lat.toFixed(3)}, ${lng.toFixed(3)}`)
+          }
+        }} />
         {marker && (
           <Marker position={[marker.lat, marker.lng]} ref={markerRef}>
             <Popup>{info}</Popup>
@@ -112,7 +123,17 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 14, color: '#666' }}>{detail.place ?? 'Selected location'}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>Air Quality</div>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 800,
+                marginTop: 6,
+                color: '#08385f',
+                padding: '6px 10px',
+                borderRadius: 10,
+                display: 'inline-block',
+                background: 'linear-gradient(90deg, rgba(255,200,90,0.08), rgba(255,140,40,0.04))',
+                textShadow: '0 2px 10px rgba(0,0,0,0.25)'
+              }}>Air Quality</div>
             </div>
             <button onClick={() => setDetail(null)} style={{ border: 'none', background: 'transparent', fontSize: 18, cursor: 'pointer' }}>✕</button>
           </div>

@@ -4,10 +4,11 @@
 FROM node:18-alpine AS node-builder
 WORKDIR /build
 
-# Copy only the frontend-react app and install/build
-COPY frontend-react/package.json frontend-react/package-lock.json* ./frontend-react/
-COPY frontend-react/ ./frontend-react/
-WORKDIR /build/frontend-react
+# Copy only the frontend app and install/build
+# Use `frontend/` (matches local dev folder) so Docker builds the same app
+COPY frontend/package.json frontend/package-lock.json* ./frontend/
+COPY frontend/ ./frontend/
+WORKDIR /build/frontend
 
 # Install and build. Use legacy-peer-deps to match local dev installs where needed.
 RUN npm install --legacy-peer-deps --no-audit --no-fund && npm run build
@@ -26,7 +27,7 @@ COPY backend/ ./backend/
 
 # Copy built frontend from the node builder into the location FastAPI expects
 RUN mkdir -p /app/backend/frontend
-COPY --from=node-builder /build/frontend-react/dist/ /app/backend/frontend/
+COPY --from=node-builder /build/frontend/dist/ /app/backend/frontend/
 
 # Expose port used by Uvicorn
 EXPOSE 8000
