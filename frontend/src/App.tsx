@@ -62,10 +62,10 @@ export default function App() {
         const g = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(city)}`)
         if (g.ok) {
           const gd = await g.json()
-          if (gd && gd.length > 0 && (gd[0].lat || gd[0].lon)) {
+            if (gd && gd.length > 0 && (gd[0].lat || gd[0].lon)) {
             const lat = Number(gd[0].lat)
             const lon = Number(gd[0].lon)
-            setFocus({ lat, lon, zoom: 10 })
+            setFocus({ lat, lon, zoom: 13 })
             await doSearchCoords(lat, lon)
             return
           }
@@ -96,7 +96,7 @@ export default function App() {
       setResult(resObj)
       setHighlight(resObj)
       if (latFromData != null && lonFromData != null && !isNaN(latFromData) && !isNaN(lonFromData)) {
-        setFocus({ lat: latFromData, lon: lonFromData, zoom: 10 })
+        setFocus({ lat: latFromData, lon: lonFromData, zoom: 13 })
       }
     } catch (err: any) {
       setResult({ place: `Error: ${err.message}` })
@@ -123,7 +123,7 @@ export default function App() {
       // ensure map focuses on these coordinates
       const latn = Number(lat)
       const lonn = Number(lon)
-      if (!isNaN(latn) && !isNaN(lonn)) setFocus({ lat: latn, lon: lonn, zoom: 10 })
+      if (!isNaN(latn) && !isNaN(lonn)) setFocus({ lat: latn, lon: lonn, zoom: 13 })
     } catch (err: any) {
       setResult({ place: `Error: ${err.message}` })
     } finally {
@@ -165,7 +165,7 @@ export default function App() {
                         if (s && (s.lat || s.lon)) {
                           const latn = Number(s.lat)
                           const lonn = Number(s.lon)
-                          setFocus({ lat: latn, lon: lonn, zoom: 10 })
+                          setFocus({ lat: latn, lon: lonn, zoom: 13 })
                           doSearchCoords(latn, lonn)
                         } else {
                           setFocus(null)
