@@ -84,6 +84,23 @@ export default function MapView({ focus, highlight, onClose }: { focus?: { lat: 
   // Focus handling is now performed by the MoveMap child component
 
   async function handleClick(lat: number, lng: number) {
+    // If a city was focused, treat this as a user-initiated location change:
+    // clear parent focus (so MoveMap won't re-focus) and quickly exit the deep zoom state.
+    if (focus && typeof onClose === 'function') {
+      onClose()
+      try {
+        if (mapRef.current) mapRef.current.flyTo([lat, lng], 8, { duration: 0.3 })
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      try {
+        if (mapRef.current) mapRef.current.flyTo([lat, lng], mapRef.current.getZoom(), { duration: 0.3 })
+      } catch (e) {
+        // ignore
+      }
+    }
+
     setInfo(`Fetching air quality data for ${lat.toFixed(2)}, ${lng.toFixed(2)}...`)
     setDetail(null)
     setMarker({ lat, lng })
