@@ -7,3 +7,131 @@ html, body, #root {
   width: 100%;
   height: 100%;
 }
+
+/* Ensure leaflet uses a white background when tiles are transparent */
+.leaflet-container {
+  background: #ffffff;
+}
+
+:root{
+  --bg-1: #071024;
+  --bg-2: #0d2338;
+  --panel: rgba(255,255,255,0.06);
+  --card: rgba(255,255,255,0.04);
+  --muted: #9fb0c8;
+  --accent: #ffcc33;
+}
+
+body{
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(20,60,100,0.18), transparent), linear-gradient(180deg,var(--bg-1),var(--bg-2));
+  color: #eaf2ff;
+}
+
+.app-shell{
+  min-height: 100vh;
+  padding: 36px;
+  box-sizing: border-box;
+  display: flex;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.left-panel{
+  width: 420px;
+  max-width: 42%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 12px 40px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.left-top{ }
+.left-bottom{ }
+
+.logo-row{ display:flex; align-items:center; gap:12px }
+.logo-title{ font-size:34px; font-weight:700; letter-spacing:-0.5px }
+.logo-sub{ color:var(--muted); font-size:13px }
+
+.stat-card{ background: var(--card); border-radius:12px; padding:18px; box-shadow: 0 6px 18px rgba(2,6,23,0.5); }
+.stat-aqi{ font-size:46px; font-weight:800 }
+.stat-sub{ color:var(--muted); font-size:13px }
+
+.risk-card{ background: linear-gradient(180deg, rgba(40,80,140,0.12), rgba(24,48,84,0.08)); padding:16px; border-radius:12px }
+
+.share-row{ display:flex; gap:10px; align-items:center; color:var(--muted); font-size:13px }
+
+.map-wrapper{ flex:1; display:flex; align-items:center; justify-content:center; position:relative }
+
+.globe-frame{
+  width: min(1000px, 74vw);
+  max-width: 100%;
+  height: 640px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(3,12,40,0.7), 0 0 40px rgba(30,120,200,0.04) inset;
+  background: linear-gradient(180deg, rgba(8,20,40,0.12), rgba(6,10,20,0.06));
+  display:flex; align-items:center; justify-content:center;
+}
+
+.map-inner{ width:100%; height:100%; border-radius:12px; overflow:hidden; transform: translateY(-4px); background: linear-gradient(180deg,#ffffff, #f6fbff); }
+
+/* subtle color glow around map to blend with UI */
+.globe-frame::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  box-shadow: 0 20px 60px rgba(24,120,200,0.12) inset;
+}
+
+.map-overlay-info{ position:absolute; right:64px; bottom:92px; background: rgba(0,0,0,0.55); padding:10px 14px; border-radius:12px; box-shadow: 0 10px 30px rgba(2,6,23,0.6) }
+
+.map-controls{ position:absolute; right:24px; bottom:24px; display:flex; flex-direction:column; gap:8px }
+.map-controls button{ width:36px; height:36px; border-radius:8px; border:none; background: rgba(255,255,255,0.06); color: #fff }
+
+/* Make leaflet popups a little darker */
+.leaflet-container .leaflet-popup-content-wrapper{ background: rgba(16,24,36,0.95); color: #e7f2ff }
+
+/* AQI table styles */
+.aqi-table{ width:100%; border-collapse: collapse; margin-top:6px }
+.aqi-table th{ text-align:left; font-size:13px; color:var(--muted); padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04) }
+.aqi-table td{ padding:10px; font-size:14px; color:#eaf2ff; border-bottom:1px solid rgba(255,255,255,0.03) }
+.aqi-badge{ display:inline-block; padding:6px 10px; border-radius:8px; font-weight:800; min-width:54px; text-align:center }
+.aqi-good{ background: linear-gradient(180deg,#9be39b,#62c462); color:#062d07 }
+.aqi-moderate{ background: linear-gradient(180deg,#ffd966,#ffb100); color:#3a2a00 }
+.aqi-unhealthy{ background: linear-gradient(180deg,#ff9a7a,#ff5b3a); color:#3b0300 }
+
+/* Legend */
+.aqi-legend{ display:flex; flex-direction:column; gap:8px }
+.legend-row{ display:flex; align-items:center; gap:10px }
+.swatch{ width:18px; height:14px; display:inline-block; border-radius:4px; box-shadow: 0 2px 6px rgba(2,6,23,0.25) }
+.legend-text{ font-size:13px; color:#eaf2ff }
+.aqi-veryunhealthy{ background: linear-gradient(180deg,#ff6f6f,#ff3a3a); }
+.aqi-hazardous{ background: linear-gradient(180deg,#b94bff,#8b00d6); }
+
+/* Search box */
+.search-box{ display:flex; gap:8px; position:relative; }
+.search-input{ flex:1; padding:10px 12px; border-radius:10px; border: none; outline:none; background: rgba(255,255,255,0.04); color: #eaf2ff }
+.search-input::placeholder{ color: rgba(234,242,255,0.5) }
+.search-btn{ padding:10px 14px; border-radius:10px; border:none; background:#1f6fbf; color:#fff; cursor:pointer }
+.search-btn:disabled{ opacity:0.6; cursor:default }
+.search-result{ margin-top:10px }
+
+/* Autocomplete suggestion list */
+.suggestions-list{ position:absolute; left:0; right:0; top:44px; background: linear-gradient(180deg, rgba(8,20,40,0.6), rgba(6,10,20,0.6)); border-radius:8px; box-shadow: 0 10px 40px rgba(2,6,23,0.6); max-height:240px; overflow:auto; z-index:50; padding:6px }
+.suggestion-item{ padding:8px 10px; border-radius:6px; cursor:pointer; color:#eaf2ff; font-size:13px }
+.suggestion-item:hover{ background: rgba(255,255,255,0.03) }
+
+
+/* AQI result card shown after a city search */
+.aqi-result-card{ padding:10px; border-radius:8px; background:#fff7ef; min-width:96px; display:flex; flex-direction:column; align-items:flex-start; box-shadow: 0 6px 18px rgba(2,6,23,0.06) }
+.aqi-label{ font-size:12px; color:#9a6b00; margin-bottom:6px; font-weight:700 }
+.aqi-value{ font-size:32px; font-weight:900; color:#7a3700; line-height:1; text-shadow: 0 2px 4px rgba(0,0,0,0.12) }
+
+
+
