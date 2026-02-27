@@ -33,6 +33,7 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
   const mapRef = useRef<any>(null)
   const [zoomLevel, setZoomLevel] = useState<number>(2)
   const [mapCenterState, setMapCenterState] = useState<{ lat: number; lng: number }>({ lat: 20, lng: 0 })
+  const [baseLayer, setBaseLayer] = useState<'voyager' | 'streets'>('voyager')
 
   // react-leaflet hook-based mover: useMap isn't available at top-level,
   // so create a small child that performs the pan/zoom when `focus` changes.
@@ -103,11 +104,18 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
       <MapContainer whenCreated={(m) => { mapRef.current = m }} center={center} zoom={2} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-        {/* Use a colorful basemap (CartoDB Voyager) for richer colors */}
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-          attribution='© CARTO, © OpenStreetMap contributors'
-        />
+        {/* Base layers: Voyager (clean) and Streets (shows road names) */}
+        {baseLayer === 'voyager' ? (
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            attribution='© CARTO, © OpenStreetMap contributors'
+          />
+        ) : (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='© OpenStreetMap contributors'
+          />
+        )}
         <ZoomControl position="topright" />
         <ScaleControl position="bottomright" />
         <ClickHandler onClick={handleClick} />
@@ -147,6 +155,11 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
           <button onClick={() => mapRef.current?.zoomIn()} style={{ padding: '6px 8px', borderRadius: 6 }}>＋</button>
           <button onClick={() => mapRef.current?.zoomOut()} style={{ padding: '6px 8px', borderRadius: 6 }}>−</button>
           <button onClick={() => mapRef.current?.flyTo([mapCenterState.lat, mapCenterState.lng], (zoomLevel||13)+1, { duration: 0.4 })} style={{ padding: '6px 8px', borderRadius: 6 }}>Zoom +</button>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <label style={{ fontSize: 12, color: '#333', marginRight: 8 }}>Basemap:</label>
+          <button onClick={() => setBaseLayer('voyager')} style={{ padding: '6px 8px', borderRadius: 6, marginRight: 6, background: baseLayer === 'voyager' ? '#e6f0ff' : undefined }}>Voyager</button>
+          <button onClick={() => setBaseLayer('streets')} style={{ padding: '6px 8px', borderRadius: 6, background: baseLayer === 'streets' ? '#e6f0ff' : undefined }}>Streets</button>
         </div>
       </div>
 
