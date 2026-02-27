@@ -169,8 +169,18 @@ export default function MapView({ focus, highlight, onClose }: { focus?: { lat: 
         <div style={{ fontSize: 12, color: '#333', marginTop: 6 }}>Zoom: <strong>{zoomLevel}</strong></div>
         <div style={{ fontSize: 12, color: '#333' }}>Center: {mapCenterState.lat.toFixed(3)}, {mapCenterState.lng.toFixed(3)}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button onClick={() => mapRef.current?.zoomIn()} style={{ padding: '6px 8px', borderRadius: 6 }}>＋</button>
-          <button onClick={() => mapRef.current?.zoomOut()} style={{ padding: '6px 8px', borderRadius: 6 }}>−</button>
+          <button onClick={() => {
+            const m = mapRef.current
+            if (m && typeof m.setZoom === 'function') {
+              try { m.setZoom(m.getZoom() + 1, { animate: false }) } catch (e) { /* ignore */ }
+            }
+          }} style={{ padding: '6px 8px', borderRadius: 6 }}>＋</button>
+          <button onClick={() => {
+            const m = mapRef.current
+            if (m && typeof m.setZoom === 'function') {
+              try { m.setZoom(m.getZoom() - 1, { animate: false }) } catch (e) { /* ignore */ }
+            }
+          }} style={{ padding: '6px 8px', borderRadius: 6 }}>−</button>
           <button onClick={() => mapRef.current?.flyTo([mapCenterState.lat, mapCenterState.lng], (zoomLevel||13)+1, { duration: 0.4 })} style={{ padding: '6px 8px', borderRadius: 6 }}>Zoom +</button>
         </div>
         <div style={{ marginTop: 8 }}>
