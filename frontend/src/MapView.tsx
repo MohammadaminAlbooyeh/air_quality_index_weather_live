@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { MapContainer, TileLayer, useMapEvents, useMap, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, useMapEvents, useMap, Marker, Popup, ZoomControl, ScaleControl } from 'react-leaflet'
 import L, { LatLngExpression } from 'leaflet'
 
 // Fix default icon paths for Vite bundling by importing images
@@ -31,6 +31,8 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
   const [detail, setDetail] = useState<{ aqi?: number; temp?: number | null; humidity?: number | null; place?: string } | null>(null)
   const markerRef = useRef<any>(null)
   const mapRef = useRef<any>(null)
+  const [zoomLevel, setZoomLevel] = useState<number>(2)
+  const [mapCenterState, setMapCenterState] = useState<{ lat: number; lng: number }>({ lat: 20, lng: 0 })
 
   // react-leaflet hook-based mover: useMap isn't available at top-level,
   // so create a small child that performs the pan/zoom when `focus` changes.
@@ -50,6 +52,22 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
         // ignore
       }
     }, [focusProp, highlightProp, mapInstance])
+    return null
+  }
+
+  // keep UI state in sync with the map (zoom & center)
+  function MapStatus() {
+    const map = useMap()
+    useMapEvents({
+      moveend() {
+        const c = map.getCenter()
+        setMapCenterState({ lat: c.lat, lng: c.lng })
+        setZoomLevel(map.getZoom())
+      },
+      zoomend() {
+        setZoomLevel(map.getZoom())
+      }
+    })
     return null
   }
   useEffect(() => {
@@ -84,12 +102,14 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
-      <MapContainer whenCreated={(m) => { mapRef.current = m }} center={center} zoom={2} style={{ height: '100%', width: '100%' }}>
+      <MapContainer whenCreated={(m) => { mapRef.current = m }} center={center} zoom={2} style={{ height: '100%', width: '100%' }} zoomControl={false}>
         {/* Use a colorful basemap (CartoDB Voyager) for richer colors */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
           attribution='© CARTO, © OpenStreetMap contributors'
         />
+        <ZoomControl position="topright" />
+        <ScaleControl position="bottomright" />
         <ClickHandler onClick={handleClick} />
         <MoveMap focusProp={focus} highlightProp={highlight} onMoved={(lat: number, lng: number) => {
           setMarker({ lat, lng })
@@ -100,6 +120,7 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
             setInfo(`Location: ${lat.toFixed(3)}, ${lng.toFixed(3)}`)
           }
         }} />
+        <MapStatus />
         {marker && (
           <Marker position={[marker.lat, marker.lng]} ref={markerRef}>
             <Popup>{info}</Popup>
@@ -116,6 +137,17 @@ export default function MapView({ focus, highlight }: { focus?: { lat: number | 
       <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(255,255,255,0.95)', padding: '8px 12px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
         <strong>Info:</strong>
         <div style={{ marginTop: 4 }}>{info}</div>
+      </div>
+
+      <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(255,255,255,0.92)', padding: '8px 12px', borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', zIndex: 1000 }}>
+        <div style={{ fontSize: 13, color: '#08385f', fontWeight: 700 }}>Map</div>
+        <div style={{ fontSize: 12, color: '#333', marginTop: 6 }}>Zoom: <strong>{zoomLevel}</strong></div>
+        <div style={{ fontSize: 12, color: '#333' }}>Center: {mapCenterState.lat.toFixed(3)}, {mapCenterState.lng.toFixed(3)}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button onClick={() => mapRef.current?.zoomIn()} style={{ padding: '6px 8px', borderRadius: 6 }}>＋</button>
+          <button onClick={() => mapRef.current?.zoomOut()} style={{ padding: '6px 8px', borderRadius: 6 }}>−</button>
+          <button onClick={() => mapRef.current?.flyTo([mapCenterState.lat, mapCenterState.lng], (zoomLevel||13)+1, { duration: 0.4 })} style={{ padding: '6px 8px', borderRadius: 6 }}>Zoom +</button>
+        </div>
       </div>
 
       {detail && (
