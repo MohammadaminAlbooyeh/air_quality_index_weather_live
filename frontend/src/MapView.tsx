@@ -24,7 +24,17 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
   return null
 }
 
-export default function MapView({ focus, highlight, onClose }: { focus?: { lat: number | string; lon: number | string; zoom?: number }, highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }, onClose?: () => void }) {
+export default function MapView({ 
+  focus, 
+  highlight, 
+  onClose,
+  onLocationSelect 
+}: { 
+  focus?: { lat: number | string; lon: number | string; zoom?: number }, 
+  highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }, 
+  onClose?: () => void,
+  onLocationSelect?: (data: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }) => void
+}) {
   const center: LatLngExpression = [20.0, 0.0] // world view center
   const [info, setInfo] = useState<string>('Click anywhere on the map to fetch air quality data')
   const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(null)
@@ -109,10 +119,29 @@ export default function MapView({ focus, highlight, onClose }: { focus?: { lat: 
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}
-      const temp = iaqi.t?.v ?? iaqi.temp?.v ?? null
-      const humidity = iaqi.h?.v ?? iaqi.hum?.v ?? null
-      setInfo(`AQI: ${data.aqi} — Dominant pollutant: ${data.dominentpol}`)
-      setDetail({ aqi: data.aqi, temp: typeof temp === 'number' ? temp : null, humidity: typeof humidity === 'number' ? humidity : null, place: data?.city?.name })
+      
+      // Improved extraction: check more possible keys and handle cases where values might be strings
+      const getVal = (keys: string[]) => {
+        for (const k of keys) {
+          const v = iaqi[k]?.v
+          if (v !== undefined && v !== null) return Number(v)
+        }
+        return null
+      }
+
+      const temp = getVal(['t', 'temp', 'temperature'])
+      const humidity = getVal(['h', 'hum', 'humidity'])
+      const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+
+      setInfo(`AQI: ${aqi ?? 'N/A'} — Dominant pollutant: ${data.dominentpol || 'Unknown'}`)
+      const resData = { 
+        aqi: aqi !== null ? aqi : undefined, 
+        temp: temp, 
+        humidity: humidity, 
+        place: data?.city?.name 
+      }
+      setDetail(resData)
+      if (onLocationSelect) onLocationSelect(resData)
     } catch (err: any) {
       setInfo(`Failed to fetch air quality data: ${err.message}`)
     }

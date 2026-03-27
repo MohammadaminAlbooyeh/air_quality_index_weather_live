@@ -73,9 +73,10 @@ BASE_DIR = pathlib.Path(__file__).parent.parent.resolve()
 
 
 # Load API token from environment variable
-API_TOKEN = os.getenv("WAQI_API_TOKEN")
-if not API_TOKEN:
-    raise ValueError("WAQI_API_TOKEN environment variable is not set. Please set it in your .env file or environment.")
+API_TOKEN = os.getenv("WAQI_API_TOKEN") 
+if not API_TOKEN or API_TOKEN == "your_api_token_here":
+    logger.warning("WAQI_API_TOKEN is not set or using default value. Switching to 'demo' token.")
+    API_TOKEN = "demo"
 BASE_URL = "https://api.waqi.info/feed/"
 
 
@@ -100,6 +101,10 @@ def set_cached_data(key, data):
 def fetch_aqi_data(url):
     """Fetch AQI data from WAQI API with error handling"""
     try:
+        # Mask token in logs
+        log_url = url.replace(API_TOKEN, "REDACTED")
+        logger.info(f"External API Call: {log_url}")
+        
         response = requests.get(url, timeout=10)
 
         if response.status_code == 404:
@@ -110,9 +115,12 @@ def fetch_aqi_data(url):
             raise HTTPException(status_code=response.status_code, detail="Failed to fetch air quality data")
 
         data = response.json()
+        logger.debug(f"WAQI Response: {data}")
 
         if data.get("status") == "error":
-            raise HTTPException(status_code=400, detail=data.get("data", "Invalid response from WAQI API"))
+            error_msg = data.get("data", "Invalid response from WAQI API")
+            logger.error(f"WAQI API Error: {error_msg}")
+            raise HTTPException(status_code=400, detail=error_msg)
         elif data.get("status") != "ok":
             raise HTTPException(status_code=400, detail="Invalid response from WAQI API")
 
@@ -275,3 +283,10 @@ async def get_data():
 
 # Mount the built frontend at root after API routes so /api endpoints take precedence.
 app.mount("/", StaticFiles(directory=str(BASE_DIR / "frontend"), html=True), name="frontend")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 9091))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

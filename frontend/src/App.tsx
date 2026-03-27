@@ -79,8 +79,19 @@ export default function App() {
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}
-      const temp = iaqi.t?.v ?? iaqi.temp?.v ?? null
-      const humidity = iaqi.h?.v ?? iaqi.hum?.v ?? null
+      
+      const getVal = (keys: string[]) => {
+        for (const k of keys) {
+          const v = iaqi[k]?.v
+          if (v !== undefined && v !== null) return Number(v)
+        }
+        return null
+      }
+
+      const temp = getVal(['t', 'temp', 'temperature'])
+      const humidity = getVal(['h', 'hum', 'humidity'])
+      const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+
       // If backend returned coordinates, focus the map there
       let latFromData: number | null = null
       let lonFromData: number | null = null
@@ -92,7 +103,7 @@ export default function App() {
         lonFromData = Number(data.station.geo[1])
       }
 
-      const resObj = { aqi: data.aqi, temp: typeof temp === 'number' ? temp : null, humidity: typeof humidity === 'number' ? humidity : null, place: data?.city?.name ?? city }
+      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place: data?.city?.name ?? city }
       setResult(resObj)
       setHighlight(resObj)
       if (latFromData != null && lonFromData != null && !isNaN(latFromData) && !isNaN(lonFromData)) {
@@ -114,10 +125,21 @@ export default function App() {
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}
-      const temp = iaqi.t?.v ?? iaqi.temp?.v ?? null
-      const humidity = iaqi.h?.v ?? iaqi.hum?.v ?? null
+
+      const getVal = (keys: string[]) => {
+        for (const k of keys) {
+          const v = iaqi[k]?.v
+          if (v !== undefined && v !== null) return Number(v)
+        }
+        return null
+      }
+
+      const temp = getVal(['t', 'temp', 'temperature'])
+      const humidity = getVal(['h', 'hum', 'humidity'])
+      const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+
       const place = data?.city?.name || `${lat},${lon}`
-      const resObj = { aqi: data.aqi, temp: typeof temp === 'number' ? temp : null, humidity: typeof humidity === 'number' ? humidity : null, place }
+      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place }
       setResult(resObj)
       setHighlight(resObj)
       // ensure map focuses on these coordinates
@@ -201,7 +223,7 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div style={{ color:'var(--muted)', marginTop:8 }}>No data. Search for a city above.</div>
+                <div style={{ color:'var(--muted)', marginTop:8 }}>No data. Search for a city or click on the map.</div>
               )}
             </div>
           </div>
@@ -225,7 +247,15 @@ export default function App() {
       <main className="map-wrapper">
         <div className="globe-frame">
             <div className="map-inner">
-                <MapView focus={focus ?? undefined} highlight={highlight ?? undefined} onClose={() => { setFocus(null); setHighlight(null); setResult(null); setQuery('') }} />
+                <MapView 
+                  focus={focus ?? undefined} 
+                  highlight={highlight ?? undefined} 
+                  onClose={() => { setFocus(null); setHighlight(null); setResult(null); setQuery('') }} 
+                  onLocationSelect={(data) => {
+                    setResult(data);
+                    if (data.place) setQuery(data.place);
+                  }}
+                />
               </div>
         </div>
 
