@@ -57,24 +57,29 @@ export default function App() {
     setLoading(true)
     setResult(null)
     try {
-      // Try geocoding the city name first to get reliable coordinates
+      // Try geocoding with more specific settings for better accuracy
       try {
-        const g = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(city)}`)
+        const g = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(city)}`)
         if (g.ok) {
           const gd = await g.json()
-            if (gd && gd.length > 0 && (gd[0].lat || gd[0].lon)) {
+          if (gd && gd.length > 0 && (gd[0].lat || gd[0].lon)) {
             const lat = Number(gd[0].lat)
             const lon = Number(gd[0].lon)
-            setFocus({ lat, lon, zoom: 13 })
-            await doSearchCoords(lat, lon)
+            
+            // Extract a better place name if available
+            const addr = gd[0].address || {}
+            const detectedName = addr.city || addr.town || addr.village || addr.state || city
+            
+            setFocus({ lat, lon, zoom: 12 })
+            await doSearchCoords(lat, lon, detectedName)
             return
           }
         }
       } catch (ge) {
-        // ignore geocode errors and fallback to text search
+        // ignore geocode errors
       }
 
-      // Fallback: use text-based search on backend
+      // Fallback
       const res = await fetch(`/api/air-quality/${encodeURIComponent(city)}`)
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
@@ -91,19 +96,9 @@ export default function App() {
       const temp = getVal(['t', 'temp', 'temperature'])
       const humidity = getVal(['h', 'hum', 'humidity'])
       const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+      const time = data?.time?.s || null
 
-      // If backend returned coordinates, focus the map there
-      let latFromData: number | null = null
-      let lonFromData: number | null = null
-      if (Array.isArray(data?.city?.geo) && data.city.geo.length >= 2) {
-        latFromData = Number(data.city.geo[0])
-        lonFromData = Number(data.city.geo[1])
-      } else if (Array.isArray(data?.station?.geo) && data.station.geo.length >= 2) {
-        latFromData = Number(data.station.geo[0])
-        lonFromData = Number(data.station.geo[1])
-      }
-
-      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place: data?.city?.name ?? city }
+      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place: city, time }
       setResult(resObj)
       setHighlight(resObj)
       if (latFromData != null && lonFromData != null && !isNaN(latFromData) && !isNaN(lonFromData)) {
@@ -116,7 +111,7 @@ export default function App() {
     }
   }
 
-  async function doSearchCoords(lat: number | string, lon: number | string) {
+  async function doSearchCoords(lat: number | string, lon: number | string, customPlaceName?: string) {
     if (lat == null || lon == null) return
     setLoading(true)
     setResult(null)
@@ -137,15 +132,16 @@ export default function App() {
       const temp = getVal(['t', 'temp', 'temperature'])
       const humidity = getVal(['h', 'hum', 'humidity'])
       const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+      const time = data?.time?.s || null
 
-      const place = data?.city?.name || `${lat},${lon}`
-      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place }
+      const place = customPlaceName || data?.city?.name || `${lat},${lon}`
+      const resObj = { aqi: aqi !== null ? aqi : undefined, temp, humidity, place, time }
       setResult(resObj)
       setHighlight(resObj)
       // ensure map focuses on these coordinates
       const latn = Number(lat)
       const lonn = Number(lon)
-      if (!isNaN(latn) && !isNaN(lonn)) setFocus({ lat: latn, lon: lonn, zoom: 13 })
+      if (!isNaN(latn) && !isNaN(lonn)) setFocus({ lat: latn, lon: lonn, zoom: 12 })
     } catch (err: any) {
       setResult({ place: `Error: ${err.message}` })
     } finally {
@@ -206,6 +202,11 @@ export default function App() {
             <div className="search-result" style={{ marginTop:12 }}>
               {result ? (
                 <div>
+                  {result.time && (
+                    <div style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>
+                      Last updated: {result.time}
+                    </div>
+                  )}
                   <div style={{ fontSize:14, fontWeight:700 }}>{result.place}</div>
                   <div style={{ display:'flex', gap:8, marginTop:8 }}>
                     <div className="aqi-result-card">

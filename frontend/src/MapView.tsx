@@ -31,9 +31,9 @@ export default function MapView({
   onLocationSelect 
 }: { 
   focus?: { lat: number | string; lon: number | string; zoom?: number }, 
-  highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }, 
+  highlight?: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string; time?: string | null }, 
   onClose?: () => void,
-  onLocationSelect?: (data: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string }) => void
+  onLocationSelect?: (data: { aqi?: number; temp?: number | null; humidity?: number | null; place?: string; time?: string | null }) => void
 }) {
   const center: LatLngExpression = [20.0, 0.0] // world view center
   const [info, setInfo] = useState<string>('Click anywhere on the map to fetch air quality data')
@@ -132,13 +132,15 @@ export default function MapView({
       const temp = getVal(['t', 'temp', 'temperature'])
       const humidity = getVal(['h', 'hum', 'humidity'])
       const aqi = data.aqi !== undefined ? Number(data.aqi) : null
+      const time = data?.time?.s || null
 
-      setInfo(`AQI: ${aqi ?? 'N/A'} — Dominant pollutant: ${data.dominentpol || 'Unknown'}`)
+      setInfo(`AQI: ${aqi ?? 'N/A'} — ${data?.city?.name || ''}`)
       const resData = { 
         aqi: aqi !== null ? aqi : undefined, 
         temp: temp, 
         humidity: humidity, 
-        place: data?.city?.name 
+        place: data?.city?.name,
+        time: time
       }
       setDetail(resData)
       if (onLocationSelect) onLocationSelect(resData)
@@ -177,7 +179,19 @@ export default function MapView({
         <MapStatus />
         {marker && (
           <Marker position={[marker.lat, marker.lng]} ref={markerRef}>
-            <Popup>{info}</Popup>
+            <Popup>
+              <div style={{ minWidth: 150 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{detail?.place || 'Location Details'}</div>
+                <div style={{ fontSize: 13, marginBottom: 2 }}>AQI: <strong>{detail?.aqi ?? 'N/A'}</strong></div>
+                {detail?.temp != null && <div style={{ fontSize: 12 }}>Temp: {detail.temp} °C</div>}
+                {detail?.humidity != null && <div style={{ fontSize: 12 }}>Humidity: {detail.humidity} %</div>}
+                {detail?.time && (
+                  <div style={{ fontSize: 10, color: '#666', marginTop: 6, borderTop: '1px solid #eee', paddingTop: 4 }}>
+                    Updated: {detail.time}
+                  </div>
+                )}
+              </div>
+            </Popup>
           </Marker>
         )}
       </MapContainer>

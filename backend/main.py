@@ -79,7 +79,52 @@ if not API_TOKEN or API_TOKEN == "your_api_token_here":
     API_TOKEN = "demo"
 BASE_URL = "https://api.waqi.info/feed/"
 
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
+
+def fetch_openweather_aqi(lat: float, lon: float):
+    """Fallback to OpenWeatherMap Air Pollution API if WAQI is stale"""
+    if not OPENWEATHER_API_KEY:
+        return None
+    try:
+        # OpenWeather Air Pollution API: http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_key}
+        url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            ow_data = resp.json()
+            if ow_data.get("list"):
+                main = ow_data["list"][0]["main"]
+                components = ow_data["list"][0]["components"]
+                dt = ow_data["list"][0]["dt"]
+                
+                # OpenWeather uses 1-5 index (1=Good, 5=Very Poor)
+                # We'll map it to WAQI-like numbers or just return as is with a flag
+                # For simplicity, we'll try to return a structure compatible with frontend
+                # Native OpenWeather AQI: 1: Good, 2: Fair, 3: Moderate, 4: Poor, 5: Very Poor
+                # WAQI scale is 0-500+. We'll do a rough mapping for the UI.
+                aqi_map = {1: 25, 2: 75, 3: 125, 4: 175, 5: 250}
+                
+                return {
+                    "aqi": aqi_map.get(main.get("aqi"), 0),
+                    "idx": "owm",
+                    "attributions": [{"name": "OpenWeatherMap", "url": "https://openweathermap.org/"}],
+                    "city": {"name": "OpenWeather Model Data"},
+                    "time": {"s": datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')},
+                    "iaqi": {
+                        "pm25": {"v": components.get("pm2_5")},
+                        "pm10": {"v": components.get("pm10")},
+                        "no2": {"v": components.get("no2")},
+                        "so2": {"v": components.get("so2")},
+                        "co": {"v": components.get("co")},
+                    },
+                    "source": "openweather"
+                }
+    except Exception as e:
+        logger.error(f"OpenWeather fallback fail: {e}")
+    return None
+
+
+@lru_cache(maxsize=128)
 def get_cached_data(key):
     """Get cached data if available and not expired"""
     if key in cache:
@@ -192,42 +237,40 @@ def get_air_quality():
 @app.get(
     "/api/air-quality/{city}",
     summary="Get AQI by City Name",
-    description="Fetch air quality index data for a specific city by name",
+    description="Fetch air quality index data for a specific city by name with geocoding and OWM fallback",
     tags=["Air Quality"],
-    responses={
-        200: {"description": "Successful response with AQI data"},
-        400: {"description": "Invalid response from WAQI API"},
-        404: {"description": "City not found"},
-        503: {"description": "Service unavailable - unable to reach external API"},
-    },
 )
 def get_air_quality_by_city(city: str):
     """
     Get air quality data for a specific city.
-
-    Parameters:
-    - **city**: City name (e.g., London, Paris, Tokyo)
-
-    Returns:
-    - AQI value
-    - Dominant pollutant
-    - Temperature, humidity, and other measurements
-    - Forecast data
+    Now uses geocoding locally in backend to ensure we get coordinates and can use OWM fallback.
     """
-    cache_key = f"city:{city}"
+    cache_key = f"city_v2:{city}"
 
     # Check cache first
     cached_data = get_cached_data(cache_key)
     if cached_data:
-        logger.info(f"Returning cached data for city: {city}")
         return cached_data
 
-    # Fetch fresh data
-    logger.info(f"Fetching fresh data for city: {city}")
+    # Try to get coordinates first via Nominatim (OSM)
+    try:
+        g_url = f"https://nominatim.openstreetmap.org/search?format=json&q={city}&limit=1"
+        g_resp = requests.get(g_url, headers={'User-Agent': 'AirQualityApp/1.0'}, timeout=5)
+        if g_resp.status_code == 200:
+            g_data = g_resp.json()
+            if g_data:
+                lat = float(g_data[0]["lat"])
+                lon = float(g_data[0]["lon"])
+                # Use our coordinate-based logic which has the OWM fallback
+                data = get_air_quality_by_coords(lat, lon)
+                set_cached_data(cache_key, data)
+                return data
+    except Exception as e:
+        logger.error(f"Geocoding failed for {city}: {e}")
+
+    # Fallback to direct WAQI city search if geocoding fails
     url = f"{BASE_URL}{city}/?token={API_TOKEN}"
     data = fetch_aqi_data(url)
-
-    # Cache the result
     set_cached_data(cache_key, data)
     return data
 
@@ -235,7 +278,7 @@ def get_air_quality_by_city(city: str):
 @app.get(
     "/api/air-quality-coords/{lat}/{lon}",
     summary="Get AQI by Coordinates",
-    description="Fetch air quality index data for specific geographic coordinates",
+    description="Fetch air quality index data for specific geographic coordinates using a more precise geosearch fallback",
     tags=["Air Quality"],
     responses={
         200: {"description": "Successful response with AQI data"},
@@ -247,18 +290,9 @@ def get_air_quality_by_city(city: str):
 def get_air_quality_by_coords(lat: float, lon: float):
     """
     Get air quality data for specific geographic coordinates.
-
-    Parameters:
-    - **lat**: Latitude (e.g., 51.5074)
-    - **lon**: Longitude (e.g., -0.1278)
-
-    Returns:
-    - AQI value
-    - Dominant pollutant
-    - Temperature, humidity, and other measurements
-    - Forecast data
+    Uses geosearch to find the nearest active station and falls back to OpenWeatherMap for stale data (like Tehran).
     """
-    cache_key = f"coords:{lat}:{lon}"
+    cache_key = f"coords_v3:{lat}:{lon}"
 
     # Check cache first
     cached_data = get_cached_data(cache_key)
@@ -266,10 +300,43 @@ def get_air_quality_by_coords(lat: float, lon: float):
         logger.info(f"Returning cached data for coordinates: {lat}, {lon}")
         return cached_data
 
-    # Fetch fresh data
-    logger.info(f"Fetching fresh data for coordinates: {lat}, {lon}")
+    # Fetch fresh WAQI data
+    logger.info(f"Fetching fresh data for coordinates using geosearch: {lat}, {lon}")
     url = f"{BASE_URL}geo:{lat};{lon}/?token={API_TOKEN}"
     data = fetch_aqi_data(url)
+
+    # CHECK FOR STALENESS (The "Tehran" problem)
+    # If the data is from a different country/region (Kuwait for Tehran case)
+    # or the value is missing, we fallback to OpenWeatherMap.
+    stale = False
+    
+    # Check if the station name contains the original city/country we expect
+    # or if the timestamp is old.
+    if data and data.get("city") and data["city"].get("name"):
+        station_name = data["city"]["name"].lower()
+        # If we are in Tehran but data says Kuwait, it's a mismatch
+        if "kuwait" in station_name and (lat > 32 and lat < 38) and (lon > 48 and lon < 53):
+            stale = True
+            logger.info("Station mismatch detected (Kuwait station for Iran coords). Switching to OpenWeather.")
+
+    if data and data.get("time") and data["time"].get("s") and not stale:
+        try:
+            # Format: 2026-03-27 13:00:00 or similar
+            data_time_str = data["time"]["s"][:10]
+            data_time = datetime.strptime(data_time_str, "%Y-%m-%d")
+            # If data is more than 2 days old, consider it stale
+            if (datetime.now() - data_time).days > 2:
+                stale = True
+                logger.info(f"WAQI data is stale ({data_time_str}). Switching to OpenWeather.")
+        except Exception as e:
+            logger.error(f"Time parsing error: {e}")
+
+    if stale or not data or data.get("aqi") == "-" or data.get("aqi") is None:
+        ow_data = fetch_openweather_aqi(lat, lon)
+        if ow_data:
+            # Merge some attribution info to avoid breaking frontend
+            ow_data["city"]["geo"] = [lat, lon]
+            data = ow_data
 
     # Cache the result
     set_cached_data(cache_key, data)
