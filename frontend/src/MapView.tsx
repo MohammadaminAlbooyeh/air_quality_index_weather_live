@@ -139,7 +139,7 @@ export default function MapView({
         aqi: aqi !== null ? aqi : undefined, 
         temp: temp, 
         humidity: humidity, 
-        place: data?.city?.name,
+        place: data?.city?.name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
         time: time
       }
       setDetail(resData)

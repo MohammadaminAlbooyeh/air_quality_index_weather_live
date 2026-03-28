@@ -90,6 +90,19 @@ def fetch_openweather_aqi(lat: float, lon: float):
         # OpenWeather Air Pollution API: http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_key}
         url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}"
         resp = requests.get(url, timeout=5)
+        
+        # Also fetch current weather for temperature and humidity
+        weather_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}&units=metric"
+        w_resp = requests.get(weather_url, timeout=5)
+        weather_info = {}
+        if w_resp.status_code == 200:
+            w_data = w_resp.json()
+            weather_info = {
+                "t": {"v": w_data.get("main", {}).get("temp")},
+                "h": {"v": w_data.get("main", {}).get("humidity")},
+                "w": {"v": w_data.get("wind", {}).get("speed")}
+            }
+
         if resp.status_code == 200:
             ow_data = resp.json()
             if ow_data.get("list"):
@@ -104,19 +117,23 @@ def fetch_openweather_aqi(lat: float, lon: float):
                 # WAQI scale is 0-500+. We'll do a rough mapping for the UI.
                 aqi_map = {1: 25, 2: 75, 3: 125, 4: 175, 5: 250}
                 
+                iaqi = {
+                    "pm25": {"v": components.get("pm2_5")},
+                    "pm10": {"v": components.get("pm10")},
+                    "no2": {"v": components.get("no2")},
+                    "so2": {"v": components.get("so2")},
+                    "co": {"v": components.get("co")},
+                }
+                # Merge weather info into iaqi
+                iaqi.update(weather_info)
+
                 return {
                     "aqi": aqi_map.get(main.get("aqi"), 0),
                     "idx": "owm",
                     "attributions": [{"name": "OpenWeatherMap", "url": "https://openweathermap.org/"}],
                     "city": {"name": "OpenWeather Model Data"},
                     "time": {"s": datetime.fromtimestamp(dt).strftime('%Y-%m-%d %H:%M:%S')},
-                    "iaqi": {
-                        "pm25": {"v": components.get("pm2_5")},
-                        "pm10": {"v": components.get("pm10")},
-                        "no2": {"v": components.get("no2")},
-                        "so2": {"v": components.get("so2")},
-                        "co": {"v": components.get("co")},
-                    },
+                    "iaqi": iaqi,
                     "source": "openweather"
                 }
     except Exception as e:
@@ -331,12 +348,28 @@ def get_air_quality_by_coords(lat: float, lon: float):
         except Exception as e:
             logger.error(f"Time parsing error: {e}")
 
+    # If WAQI has no useful data, fallback to OpenWeather completely
     if stale or not data or data.get("aqi") == "-" or data.get("aqi") is None:
         ow_data = fetch_openweather_aqi(lat, lon)
         if ow_data:
-            # Merge some attribution info to avoid breaking frontend
             ow_data["city"]["geo"] = [lat, lon]
             data = ow_data
+    else:
+        # If WAQI is available but missing t/h values, enrich from OpenWeather
+        iaqi = data.get("iaqi", {})
+        needs_weather = iaqi.get("t") is None or iaqi.get("h") is None
+        if needs_weather:
+            ow_data = fetch_openweather_aqi(lat, lon)
+            if ow_data and ow_data.get("iaqi"):
+                if iaqi is None:
+                    iaqi = {}
+                if iaqi.get("t") is None and ow_data["iaqi"].get("t") is not None:
+                    iaqi["t"] = ow_data["iaqi"]["t"]
+                if iaqi.get("h") is None and ow_data["iaqi"].get("h") is not None:
+                    iaqi["h"] = ow_data["iaqi"]["h"]
+                if iaqi.get("w") is None and ow_data["iaqi"].get("w") is not None:
+                    iaqi["w"] = ow_data["iaqi"]["w"]
+                data["iaqi"] = iaqi
 
     # Cache the result
     set_cached_data(cache_key, data)
