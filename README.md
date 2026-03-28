@@ -53,17 +53,6 @@ cd frontend
 npm run build
 ```
 
-- Build Docker image (requires Docker):
-
-```bash
-# from project root
-docker build -t air-quality-app:latest .
-
-# run container (exposes port 8000)
-docker run -p 8000:8000 air-quality-app:latest
-# then open http://localhost:8000 in the browser
-```
-
 ## API Endpoints
 
 - `GET /api`: Welcome message.
@@ -90,75 +79,6 @@ docker run -p 8000:8000 air-quality-app:latest
    ```
 
 4. ⚠️ **Security**: Never commit `.env` to git. It's already in `.gitignore`.
-
-## CI/CD Pipeline
-
-This project includes a complete CI/CD pipeline using GitHub Actions for automated testing, code quality checks, and deployment.
-
-### Features
-- ✅ **Automated Testing**: Runs on every push and PR
-- ✅ **Code Quality Checks**: Linting (flake8) and formatting (black)
-- ✅ **Security Scanning**: Vulnerability detection with Trivy
-- ✅ **Code Coverage**: Test coverage reporting with Codecov
-- ✅ **Automated Deployment**: Deploy to Railway, Heroku, AWS, or DigitalOcean
-- ✅ **Notifications**: Slack integration for deployment status
-
-### Quick Start
-
-**Run tests locally:**
-```bash
-pytest tests/ -v
-```
-
-**Check code quality:**
-```bash
-flake8 backend/ tests/
-black --check backend/ tests/
-```
-
-**Format code:**
-```bash
-black backend/ tests/
-```
-
-For detailed CI/CD setup and configuration, see [.github/CI_CD_SETUP.md](.github/CI_CD_SETUP.md)
-
-### GitHub Actions Workflows
-
-1. **CI Pipeline** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
-   - Backend tests and quality checks
-   - Frontend build verification
-   - Security vulnerability scanning
-   - Code coverage reporting
-
-2. **Deploy Pipeline** ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml))
-   - Docker image build and push
-   - Multi-platform deployment support
-   - Automated notifications
-
-## Testing
-
-### Running Unit Tests
-
-The project includes comprehensive unit tests for the backend API.
-
-```bash
-# Run all tests
-./.venv/bin/python -m pytest tests/ -v
-
-# Run with coverage report
-./.venv/bin/python -m pytest tests/ --cov=backend --cov-report=html
-
-# Run specific test file
-./.venv/bin/python -m pytest tests/test_main.py -v
-```
-
-Tests cover:
-- API endpoint functionality
-- Caching mechanism
-- Error handling (404, 503, timeouts)
-- Request monitoring
-- Cache expiration
 
 ## Monitoring & Analytics
 
