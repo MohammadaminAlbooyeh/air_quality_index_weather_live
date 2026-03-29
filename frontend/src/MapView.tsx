@@ -115,7 +115,8 @@ export default function MapView({
     setDetail(null)
     setMarker({ lat, lng })
     try {
-      const res = await fetch(`/api/air-quality-coords/${lat}/${lng}`)
+      const API = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API}/api/air-quality-coords/${lat}/${lng}`)
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}

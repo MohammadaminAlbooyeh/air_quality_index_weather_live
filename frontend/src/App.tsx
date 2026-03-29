@@ -80,7 +80,8 @@ export default function App() {
       }
 
       // Fallback
-      const res = await fetch(`/api/air-quality/${encodeURIComponent(city)}`)
+      const API = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API}/api/air-quality/${encodeURIComponent(city)}`)
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}
@@ -116,7 +117,8 @@ export default function App() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await fetch(`/api/air-quality-coords/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`)
+      const API = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API}/api/air-quality-coords/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`)
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       const iaqi = data?.iaqi || {}
